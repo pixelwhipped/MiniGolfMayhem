@@ -1,0 +1,486 @@
+
+    public class Tile
+    {
+        private int _topTileNumber;
+        private int _bottomTileNumber;
+        private Point _location;
+
+        public Tile(Point location, int bottomTileNumber, int topTileNumber, List<Tile> tiles)
+        {
+            Tiles = tiles;
+            Location = location;
+            TopTileNumber = topTileNumber;
+            BottomTileNumber = bottomTileNumber;            
+        }
+
+        public int[] TopTileOptions => GetTopTileOptions(TileAbove, TileBelow, TileToLeft, TileToRight);
+
+        public int[] BottomTileOptions => GetBottomTileOptions(TileAbove,TileBelow,TileToLeft,TileToRight);
+
+        public static int[] GetBottomTileOptions(Tile tileAbove, Tile tileBelow, Tile tileToLeft, Tile tileToRight)
+        {
+            var l = new List<int>(WorldHelpers.BottomTiles);
+            if (tileAbove != null && tileAbove.BottomTileNumber != 0)
+            {
+                if (WorldHelpers.GetOpenSides(tileAbove.BottomTileNumber).Contains(Side.Bottom))
+                {
+                    l.RemoveAll(t => !tileAbove.BottomTilesBelow.Contains(t));
+                }
+                else
+                {
+                    l.RemoveAll(t => WorldHelpers.GetOpenSides(t).Contains(Side.Top));
+                }
+            }
+            if (tileBelow != null && tileBelow.BottomTileNumber != 0)
+            {
+                if (WorldHelpers.GetOpenSides(tileBelow.BottomTileNumber).Contains(Side.Top))
+                {
+                    l.RemoveAll(t => !tileBelow.BottomTilesAbove.Contains(t));
+                }
+                else
+                {
+                    l.RemoveAll(t => WorldHelpers.GetOpenSides(t).Contains(Side.Bottom));
+                }
+            }
+            if (tileToRight != null && tileToRight.BottomTileNumber != 0)
+            {
+                if (WorldHelpers.GetOpenSides(tileToRight.BottomTileNumber).Contains(Side.Left))
+                {
+                    l.RemoveAll(t => !tileToRight.BottomTilesToLeft.Contains(t));
+                }
+                else
+                {
+                    l.RemoveAll(t => WorldHelpers.GetOpenSides(t).Contains(Side.Right));
+                }
+            }
+            if (tileToLeft != null && tileToLeft.BottomTileNumber != 0)
+            {
+                if (WorldHelpers.GetOpenSides(tileToLeft.BottomTileNumber).Contains(Side.Right))
+                {
+                    l.RemoveAll(t => !tileToLeft.BottomTilesToRight.Contains(t));
+                }
+                else
+                {
+                    l.RemoveAll(t => WorldHelpers.GetOpenSides(t).Contains(Side.Left));
+                }
+            }
+            var r = l.ToArray();
+            Array.Sort(r);
+            return r;
+        }
+
+        public static int[] GetTopTileOptions(Tile tileAbove, Tile tileBelow, Tile tileToLeft, Tile tileToRight)
+        {
+            var l = new List<int>(WorldHelpers.TopTiles.Union(WorldHelpers.Ramps));
+            if (tileAbove != null)
+            {
+                if (tileAbove.TopTileNumber != 0)
+                {
+                    if (WorldHelpers.GetOpenSides(tileAbove.TopTileNumber).Contains(Side.Bottom))
+                    {
+                        l.RemoveAll(t => !tileAbove.TopTilesBelow.Contains(t));
+                    }
+                    else
+                    {
+                        l.RemoveAll(t => WorldHelpers.GetOpenSides(t).Contains(Side.Top));
+                    }
+                }
+                else
+                {
+                    if (WorldHelpers.GetOpenSides(tileAbove.BottomTileNumber).Contains(Side.Bottom))
+                    {
+                        l.RemoveAll(t => !tileAbove.BottomTilesBelow.Contains(t));
+                    }
+                    else
+                    {
+                        l.RemoveAll(t => WorldHelpers.GetOpenSides(t).Contains(Side.Top));
+                    }
+                }
+            }
+            if (tileBelow != null && tileBelow.TopTileNumber != 0)
+            {
+                if (WorldHelpers.GetOpenSides(tileBelow.TopTileNumber).Contains(Side.Top))
+                {
+                    l.RemoveAll(t => !tileBelow.TopTilesAbove.Contains(t));
+                }
+                else
+                {
+                    l.RemoveAll(t => WorldHelpers.GetOpenSides(t).Contains(Side.Bottom));
+                }
+            }
+            if (tileToRight != null && tileToRight.TopTileNumber != 0)
+            {
+                if (WorldHelpers.GetOpenSides(tileToRight.TopTileNumber).Contains(Side.Left))
+                {
+                    l.RemoveAll(t => !tileToRight.TopTilesToLeft.Contains(t));
+                }
+                else
+                {
+                    l.RemoveAll(t => WorldHelpers.GetOpenSides(t).Contains(Side.Right));
+                }
+            }
+            if (tileToLeft != null && tileToLeft.TopTileNumber != 0)
+            {
+                if (WorldHelpers.GetOpenSides(tileToLeft.TopTileNumber).Contains(Side.Right))
+                {
+                    l.RemoveAll(t => !tileToLeft.TopTilesToRight.Contains(t));
+                }
+                else
+                {
+                    l.RemoveAll(t => WorldHelpers.GetOpenSides(t).Contains(Side.Left));
+                }
+            }
+            var r = l.ToArray();
+            Array.Sort(r);
+            return r;
+        }
+
+        public int NextTopTile()
+        {
+            var t = TopTileOptions;
+            if (!t.Any()) return TopTileNumber;
+            if (!t.Any(p => p == _topTileNumber)) 
+            {
+                TopTileNumber = t[0];
+                return TopTileNumber;
+            }
+            var i = Array.IndexOf(t, _topTileNumber);
+            var s = i;                    
+            i++;
+            while (s != i)
+            {
+                if (i >= t.Length) i = 0;
+                var tile = t[i];
+                if (_bottomTileNumber == 0)
+                {
+                    if (WorldHelpers.IsTopLevel(tile))
+                    {
+                        TopTileNumber = t[i];
+                        return TopTileNumber;
+                    }
+                    TopTileNumber = 0;
+                    BottomTileNumber = t[i];
+                    return BottomTileNumber;
+                }
+                if (WorldHelpers.IsTopLevel(tile))
+                {
+                    TopTileNumber = t[i];
+                    return TopTileNumber;
+                }
+                i++;
+            }
+            return TopTileNumber;
+        }
+
+        public int NextBottomTile()
+        {
+            var t = BottomTileOptions;
+            if (!t.Any()) return BottomTileNumber;
+            if (!t.Any(p => p == _bottomTileNumber))
+            {
+                BottomTileNumber = t[0];
+                return BottomTileNumber;
+            }
+            var i = Array.IndexOf(t, _bottomTileNumber);
+            var s = i;
+            i++;
+            while (s != i)
+            {
+                if (i >= t.Length) i = 0;
+                var tile = t[i];
+                if (_topTileNumber == 0)
+                {
+                    if (!WorldHelpers.IsTopLevel(tile))
+                    {
+                        BottomTileNumber = t[i];
+                        return BottomTileNumber;
+                    }
+                    BottomTileNumber = 0;
+                    TopTileNumber = t[i];
+                    return TopTileNumber;
+                }
+                if (!WorldHelpers.IsTopLevel(tile))
+                {
+                    BottomTileNumber = t[i];
+                    return BottomTileNumber;
+                }
+                i++;
+            }
+            return BottomTileNumber;
+        }
+        public int TopTileNumber
+        {
+            get { return _topTileNumber; }
+            set
+            {
+                var connections = WorldHelpers.GetSideConnections(value);
+                TopTilesToLeft = connections.First(p => p.Key == Side.Left).Value;
+                TopTilesToRight = connections.First(p => p.Key == Side.Right).Value;
+                TopTilesAbove = connections.First(p => p.Key == Side.Top).Value;
+                TopTilesBelow = connections.First(p => p.Key == Side.Bottom).Value;
+                _topTileNumber = value;
+            }
+        }
+
+        public int BottomTileNumber
+        {
+            get { return _bottomTileNumber; }
+            set
+            {
+                var connections = WorldHelpers.GetSideConnections(value);
+               // var to = Tile.GetBottomTileOptions(TileAbove, TileBelow, TileToLeft, TileToRight);
+                BottomTilesToLeft = connections.First(p => p.Key == Side.Left).Value;//connections.First(p => p.Key == Side.Left).Value.Where(p=>to.Contains(p)).ToArray();
+                BottomTilesToRight = connections.First(p => p.Key == Side.Right).Value;// connections.First(p => p.Key == Side.Right).Value.Where(p => to.Contains(p)).ToArray(); //new Tile(new Point(Location.X + 1, Location.Y), 0, 0, Tiles).BottomTileOptions;// connections.First(p => p.Key == Side.Right).Value;
+                BottomTilesAbove = connections.First(p => p.Key == Side.Top).Value;// connections.First(p => p.Key == Side.Top).Value.Where(p => to.Contains(p)).ToArray();// new Tile(new Point(Location.X, Location.Y - 1), 0, 0, Tiles).BottomTileOptions;//connections.First(p => p.Key == Side.Top).Value;
+                BottomTilesBelow = connections.First(p => p.Key == Side.Bottom).Value;// connections.First(p => p.Key == Side.Bottom).Value.Where(p => to.Contains(p)).ToArray(); //new Tile(new Point(Location.X, Location.Y + 1), 0, 0, Tiles).BottomTileOptions;//connections.First(p => p.Key == Side.Bottom).Value;
+                _bottomTileNumber = value;
+            }
+        }
+        
+
+        public List<Tile> Tiles { get; set; }
+
+        public int MinX => Tiles.Min(p => p.Location.X);
+        public int MinY => Tiles.Min(p => p.Location.Y);
+
+        public int MaxX => Tiles.Max(p => p.Location.X);
+        public int MaxY => Tiles.Max(p => p.Location.Y);
+
+        public int Rows => (int)MathHelper.Distance(MinY, MaxY);
+        public int Columns => (int)MathHelper.Distance(MinX, MaxX);
+
+        public Point Location
+        {
+            get { return _location; }
+            set { _location = value; }
+        }
+
+        public Point MapLocation => new Point(Location.X + Math.Abs(MinX), Location.Y + Math.Abs(MinY));
+
+        public Tile TileToLeft
+        {
+            get { return Tiles.FirstOrDefault(p => p.Location == new Point(Location.X - 1, Location.Y)); }
+            set { ReplaceOrAddTile(value); }
+        }
+
+        public int[] TopTilesToLeft { get; set; }
+        public int[] BottomTilesToLeft { get; set; }
+
+        public Tile TileToRight
+        {
+            get { return Tiles.FirstOrDefault(p => p.Location == new Point(Location.X + 1, Location.Y)); }
+            set { ReplaceOrAddTile(value); }
+        }
+        public int[] TopTilesToRight { get; set; }
+        public int[] BottomTilesToRight { get; set; }
+
+        public Tile TileAbove
+        {
+            get { return Tiles.FirstOrDefault(p => p.Location == new Point(Location.X, Location.Y - 1)); }
+            set{ReplaceOrAddTile(value);}
+        }
+        public int[] TopTilesAbove { get; set; }
+        public int[] BottomTilesAbove { get; set; }
+
+        public Tile TileBelow
+        {
+            get { return Tiles.FirstOrDefault(p => p.Location == new Point(Location.X, Location.Y + 1)); }
+            set { ReplaceOrAddTile(value); }
+        }
+        public int[] TopTilesBelow { get; set; }
+        public int[] BottomTilesBelow { get; set; }
+        private void ReplaceOrAddTile(Tile tile)
+        {
+            var i = Tiles.FindIndex(p => p.Location == tile.Location);
+            if (i > 0)
+            {
+                Tiles[i] = tile;
+            }
+            else
+            {
+                Tiles.Add(tile);
+            }
+        }
+
+    }
+    public class EditArena:BaseArena
+    {
+        public TileSet TileSet => Game.JungleTileSet;
+        public List<Tile> Tiles = new List<Tile>();
+
+        public int Layer;
+
+        public Tile CurrentTile
+        {
+            get { return _currentTile; }
+            set
+            {
+                PreviousTile = _currentTile ?? value;
+                   _currentTile = value;
+            }
+        }
+
+        public Tile PreviousTile;
+        private Tile _currentTile;
+
+        public EditArena(Golf game) : base(game)
+        {            
+            Initialise();
+        }
+        public sealed override void Initialise()
+        {
+            Layer = 1;
+            CurrentTile = new Tile(Point.Zero, 33,0,Tiles);
+            Tiles.Add(CurrentTile);
+            Camera = new Camera2D();
+            
+            base.Initialise();
+        }
+
+        public Camera2D Camera { get; set; }
+
+        public override void Update(GameTime gameTime)
+        {
+            if (Game.KeyboardInput.TypedKey(Keys.Escape))
+            {
+                Game.Arena = Game.MenuArena;
+            }
+            else if (Game.KeyboardInput.TypedKey(Keys.Up))
+            {
+                if (CurrentTile.TileAbove == null)
+                {
+                    if (Layer == 1 && CurrentTile.BottomTilesAbove.Any() ||
+                        (Layer == 2 && CurrentTile.TopTilesAbove.Any()))
+                    {
+                        var t = Layer == 1 ? CurrentTile.BottomTilesAbove[0] : CurrentTile.TopTilesAbove[0];
+                        Layer = WorldHelpers.IsTopLevel(t) ? 2 : 1;
+                        CurrentTile.TileAbove = new Tile(new Point(CurrentTile.Location.X, CurrentTile.Location.Y - 1),
+                            Layer == 1 ? t : 0, Layer == 1 ? 0 : t, Tiles);
+                        CurrentTile = CurrentTile.TileAbove;
+                     //   if (Layer == 1) CurrentTile.NextBottomTile();
+                     //   else CurrentTile.NextTopTile();
+                    }
+                }
+                else
+                {
+                    if (Layer == 2 && !WorldHelpers.IsTopLevel(CurrentTile.TileAbove.TopTileNumber)) Layer = 1;
+                    else if (Layer == 1 && WorldHelpers.IsRamp(PreviousTile.BottomTileNumber)) Layer = 2;
+                    CurrentTile = CurrentTile.TileAbove;
+                }
+            }
+            else if (Game.KeyboardInput.TypedKey(Keys.Down))
+            {
+                if (CurrentTile.TileBelow == null)
+                {
+                    if(Layer==1 && CurrentTile.BottomTilesBelow.Any()|| (Layer == 2 && CurrentTile.TopTilesBelow.Any()))
+                    {
+                        var t = Layer == 1  ? CurrentTile.BottomTilesBelow[0] : CurrentTile.TopTilesBelow[0];
+                        Layer = WorldHelpers.IsTopLevel(t) ? 2 : 1;
+                        CurrentTile.TileBelow = new Tile(new Point(CurrentTile.Location.X, CurrentTile.Location.Y + 1), Layer == 1 ? t : 0, Layer == 1 ? 0 : t, Tiles);
+                        CurrentTile = CurrentTile.TileBelow;
+                      //  if (Layer == 1) CurrentTile.NextBottomTile();
+                      //  else CurrentTile.NextTopTile();
+                    }
+                }
+                else
+                {
+                    if (Layer == 2 && !WorldHelpers.IsTopLevel(CurrentTile.TileBelow.TopTileNumber)) Layer = 1;
+                    else if (Layer == 1 && WorldHelpers.IsRamp(CurrentTile.BottomTileNumber)) Layer = 2;
+                    CurrentTile = CurrentTile.TileBelow;
+                }
+            }
+            else if (Game.KeyboardInput.TypedKey(Keys.Left) && Layer==1?CurrentTile.BottomTilesToLeft.Any(): CurrentTile.TopTilesToLeft.Any())
+            {
+                if (CurrentTile.TileToLeft == null)
+                {
+                    if (Layer == 1 && CurrentTile.BottomTilesToLeft.Any() || (Layer == 2 && CurrentTile.TopTilesToLeft.Any()))
+                    {
+                        var t = Layer == 1 ? CurrentTile.BottomTilesToLeft[0] : CurrentTile.TopTilesToLeft[0];
+                        Layer = WorldHelpers.IsTopLevel(t) ? 2 : 1;
+                        CurrentTile.TileToLeft = new Tile(new Point(CurrentTile.Location.X-1, CurrentTile.Location.Y), Layer == 1 ? t : 0, Layer == 1 ? 0 : t, Tiles);
+                        CurrentTile = CurrentTile.TileToLeft;
+                      //  if(Layer==1)CurrentTile.NextBottomTile();
+                      //  else CurrentTile.NextTopTile();
+                    }
+                }
+                else
+                {
+                    if (Layer == 2 && !WorldHelpers.IsTopLevel(CurrentTile.TileToLeft.TopTileNumber)) Layer = 1;
+                    else if (Layer == 1 && WorldHelpers.IsRamp(CurrentTile.BottomTileNumber)) Layer = 2;
+                    {
+                        if (Layer == 1 && CurrentTile.TileToLeft.BottomTileNumber == 0)
+                        {
+                            var tiles = CurrentTile.BottomTilesToLeft.ToList();
+                            if (CurrentTile.TileToLeft.TopTileNumber != 0) tiles.RemoveAll(t => WorldHelpers.IsRamp(t));
+                            CurrentTile.TileToLeft.BottomTileNumber = tiles[0];
+                        }
+                        else if (Layer == 2 && CurrentTile.TileToLeft.TopTileNumber == 0)
+                        {                            
+                            CurrentTile.TileToLeft.TopTileNumber = CurrentTile.TopTilesToLeft[0];
+                        }
+                    }
+                    CurrentTile = CurrentTile.TileToLeft;
+                }
+            }
+            else if (Game.KeyboardInput.TypedKey(Keys.Right) && Layer==1?CurrentTile.BottomTilesToRight.Any(): CurrentTile.TopTilesToRight.Any())
+            {
+                if (CurrentTile.TileToRight == null)
+                {
+                    if (Layer == 1 && CurrentTile.BottomTilesToRight.Any() || (Layer == 2 && CurrentTile.TopTilesToRight.Any()))
+                    {
+                        var t = Layer == 1 ? CurrentTile.BottomTilesToRight[0] : CurrentTile.TopTilesToRight[0];
+                        Layer = WorldHelpers.IsTopLevel(t) ? 2 : 1;
+                        CurrentTile.TileToRight = new Tile(new Point(CurrentTile.Location.X + 1, CurrentTile.Location.Y), Layer == 1 ? t : 0, Layer == 1 ? 0 : t, Tiles);
+                        CurrentTile = CurrentTile.TileToRight;
+                        //if (Layer == 1) CurrentTile.NextBottomTile();
+                        //else CurrentTile.NextTopTile();
+                    }
+                }
+                else
+                {
+                    if (Layer == 2 && !WorldHelpers.IsTopLevel(CurrentTile.TileToRight.TopTileNumber)) Layer = 1;
+                    else if (Layer == 1 && WorldHelpers.IsRamp(CurrentTile.BottomTileNumber)) Layer = 2;
+                    CurrentTile = CurrentTile.TileToRight;
+                }
+            }
+            else if (Game.KeyboardInput.TypedKey(Keys.Enter))
+            {
+                if (Layer == 1)
+                {
+                    Layer = WorldHelpers.IsTopLevel(CurrentTile.NextBottomTile()) ? 2 : 1;
+                }
+                else
+                {
+                    Layer = WorldHelpers.IsTopLevel(CurrentTile.NextTopTile()) ? 2 : 1;
+                }               
+            }
+            else if (Game.KeyboardInput.TypedKey(Keys.Delete) && Tiles.Count > 1)
+            {
+                Tiles.Remove(CurrentTile);
+                CurrentTile = PreviousTile;
+            }
+            Camera.Focus = Game.Center - 
+                           new Vector2(CurrentTile.MapLocation.X*TileSet.TileWidth,
+                               CurrentTile.MapLocation.Y*TileSet.TileHeight);
+            Camera.Update(gameTime);
+            base.Update(gameTime);
+        }
+
+        public override void Draw(SpriteBatch batch)
+        {
+            var posistion = Camera.Position;
+            foreach (var t in Tiles)
+            {
+                var c = t == CurrentTile ? Color.White : Color.Gray;
+                var offset = new Vector2(t.MapLocation.X * TileSet.TileWidth, t.MapLocation.Y * TileSet.TileHeight) + Camera.Position;
+                TileSet.DrawTile(batch, t.BottomTileNumber, offset, posistion, null, 0.4f,1f,c);
+                TileSet.DrawTileBridges(batch, t.BottomTileNumber, offset, posistion, null, 0.6f,1f,c);
+
+                TileSet.DrawTile(batch, t.TopTileNumber, offset, posistion, null, 0.7f, 1, c * 0.5f);
+                TileSet.DrawTileBridges(batch, t.TopTileNumber, offset, posistion, null, 0.8f,1,c * 0.5f);
+            }
+            batch.DrawString(Fonts.GameFont,$"{CurrentTile.Location} L:{Layer} T:{Tiles.Count}",new Vector2(10,10),Color.White );            
+
+            base.Draw(batch);
+        }
+    }
